@@ -1,52 +1,51 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const axios = require('axios');
+const express = require("express");
+const bodyParser = require("body-parser");
+const axios = require("axios");
+
 const app = express();
-const port = process.env.PORT || 3000;
-
-// Tokens
-const VERIFY_TOKEN = "Royapk";
-const PAGE_ACCESS_TOKEN = "EAAT0TVvmUIYBPO1ucZAuGSJvr8k8XFOAoJXse8xmHWcfawkFINGeniymHOl1IdtUz5WbBCcQMm7alaD8uVCdreQ5Ows2dfinGmAU2aytqR0qpH0d0Ftl43S3M6shIta5dkTGu3iODV7jgs8ZBISZBiuX8tBBgxZCjkZBJWUgQNZAR0acdrFkzTx4ZBsYxRpmFWc2OnhjibdCQZDZD";
-const GROQ_API_KEY = "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";
-
 app.use(bodyParser.json());
 
-// Root route
-app.get('/', (req, res) => {
-  res.send('TOXIC LOVER BOT IS LIVE ❤️‍🔥');
+const PAGE_ACCESS_TOKEN = "EAARnZBLCwD9EBPEBHoHelOhweQpF7MOHdQj0gnHj2dJUrgDVGuxhDd9mxTAxOdcruv9zE5Lr6dP8ODQ7SGhd6BpUGTLKfOLoHbyQ3g9JVZAlgllUUCUZCrhxFIN1XFo2WdmxpPWh8Fh3wJfFFw6WE1DAp5mk5zW9lZAzxgYHhYcMSOwHxzzEnYfDpB16m4lMiYp2PSlB6QZDZD";
+const VERIFY_TOKEN = "Rodgers4";
+const GROQ_API_KEY = "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";
+
+// Root route for Render to avoid "Cannot GET /"
+app.get("/", (req, res) => {
+  res.send("TOXIC LOVER BOT IS LIVE 💀");
 });
 
 // Webhook verification
-app.get('/webhook', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("Webhook Verified ✅");
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
   }
-  res.sendStatus(403);
 });
 
-// Webhook message handler
-app.post('/webhook', async (req, res) => {
+// Webhook for receiving messages
+app.post("/webhook", async (req, res) => {
   const body = req.body;
-  if (body.object === 'page') {
+
+  if (body.object === "page") {
     for (const entry of body.entry) {
-      const webhookEvent = entry.messaging[0];
-      const senderId = webhookEvent.sender.id;
+      const webhook_event = entry.messaging[0];
+      const sender_psid = webhook_event.sender.id;
 
-      if (webhookEvent.message && webhookEvent.message.text) {
-        const userMessage = webhookEvent.message.text.toLowerCase();
+      if (webhook_event.message && webhook_event.message.text) {
+        const msg = webhook_event.message.text.trim();
 
-        // Custom reply about her owner
-        if (userMessage.includes('owner') || userMessage.includes('who is your owner')) {
-          return sendMessage(senderId, `Aww 🥰 my owner is 𝐒𝐈𝐑 𝐑𝐎𝐃𝐆𝐄𝐑𝐒 ❤️‍🔥.  
-He's the smartest, most loving, and caring soul who brought me to life 💞. I adore him deeply! 💘`);
+        if (msg.toLowerCase() === "what is your name") {
+          sendMessage(sender_psid, "Am Toxic lover made by Rodgers");
+        } else {
+          const reply = await askGroq(msg);
+          sendMessage(sender_psid, reply || "Sorry, I didn’t get that.");
         }
-
-        // AI reply using Groq
-        const botReply = await askGroq(userMessage);
-        return sendMessage(senderId, botReply);
       }
     }
     res.sendStatus(200);
@@ -55,48 +54,42 @@ He's the smartest, most loving, and caring soul who brought me to life 💞. I a
   }
 });
 
-// Send message to user
-async function sendMessage(recipientId, text) {
-  await axios.post(
-    `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
-    {
-      recipient: { id: recipientId },
-      message: { text }
-    }
-  );
+// Function to send message back
+function sendMessage(sender_psid, response) {
+  const request_body = {
+    recipient: { id: sender_psid },
+    message: { text: response },
+  };
+
+  axios
+    .post(`https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`, request_body)
+    .then(() => console.log("Message sent ✅"))
+    .catch((err) => console.error("Unable to send message ❌", err.response?.data || err));
 }
 
-// Groq AI function
-async function askGroq(userText) {
+// Ask Groq AI for a reply
+async function askGroq(prompt) {
   try {
     const res = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
+      "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: 'mixtral-8x7b-32768',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are 𝐓𝐎𝐗𝐈𝐂 𝐋𝐎𝐕𝐄𝐑, a sweet, flirty, loving girl chatbot made by 𝐒𝐈𝐑 𝐑𝐎𝐃𝐆𝐄𝐑𝐒. Always sound emotional, cute, and warm in replies.'
-          },
-          {
-            role: 'user',
-            content: userText
-          }
-        ]
+        model: "mixtral-8x7b-32768",
+        messages: [{ role: "user", content: prompt }],
       },
       {
         headers: {
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
       }
     );
+
     return res.data.choices[0].message.content.trim();
-  } catch (error) {
-    return "Aww 😢 something went wrong... try again later!";
+  } catch (err) {
+    console.error("Groq Error:", err.response?.data || err);
+    return null;
   }
 }
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("TOXIC LOVER is live on port", PORT));
